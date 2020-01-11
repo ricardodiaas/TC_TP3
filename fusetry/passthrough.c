@@ -293,7 +293,17 @@ static int xmp_create(const char *path, mode_t mode,
 static int xmp_open(const char *path, struct fuse_file_info *fi)
 {
 	int res;
-	
+	int fd;
+	if(fd != -1){
+		int status = system("python3 ~/Downloads/TC_TP3-master/fusetry/pass.py");
+		 if(status==1){
+			return res;
+		 }
+		 else if(status==-1) {
+			 return 0;
+		 }
+		 
+	}
 	res = open(path, fi->flags);
 	if (res == -1)
 		return -errno;
@@ -317,16 +327,7 @@ static int xmp_read(const char *path, char *buf, size_t size, off_t offset,
 		return -errno;
 	res = pread(fd, buf, size, offset);
 	
-	if(fd != -1){
-		int status = system("python3 ~/fusetry/pass.py");
-		 if(status==1){
-			return res;
-		 }
-		 else if(status==-1) {
-			 return 0;
-		 }
-		 
-	}
+	
  
 	//res = pread(fd, buf, size, offset);
 	/*
@@ -359,30 +360,23 @@ static int xmp_write(const char *path, const char *buf, size_t size,
 		fd = open(path, O_WRONLY);
 	else
 		fd = fi->fh;
-
+	
 	if (fd == -1)
 		return -errno;
 
 	res = pwrite(fd, buf, size, offset);
-	int n=0;
-	if(fd != -1){
-	n++;
-	if(n==1){
-		int status = system("python3 ~/fusetry/pass.py");
-		if(status==1){
-			printf("%d",n);
-			return res;
-		 }
-		 else if(status==-1) {
-			 return 0;
-		 }
-	}
+	if (res == -1)
+		res = -errno;
+
+	if(fi == NULL)
+		close(fd);
+	return res;
 		 
 	}
 
 	
 	//return res;
-}
+
 
 static int xmp_statfs(const char *path, struct statvfs *stbuf)
 {
