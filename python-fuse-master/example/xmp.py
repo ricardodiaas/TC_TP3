@@ -24,10 +24,13 @@ try:
 except ImportError:
     pass
 import fuse
+from fuseparts._fuse import main, FuseGetContext
 from fuse import Fuse
 from tkinter import *
 import passwrd
-
+import easygui
+import getpass
+global n
 if not hasattr(fuse, '__version__'):
     raise RuntimeError("your fuse-py doesn't know of fuse.__version__, probably it's too old.")
 
@@ -56,6 +59,7 @@ class Xmp(Fuse):
         # import thread
         # thread.start_new_thread(self.mythread, ())
         self.root = '/'
+        self.GetContext()
 
 #    def mythread(self):
 #
@@ -69,7 +73,28 @@ class Xmp(Fuse):
 #            print "mythread: ticking"
 
     def getattr(self, path):
-        return os.lstat("." + path)
+        fileuser = os.lstat("." + path)
+        calluser = os.getuid()
+        calluser2 = os.geteuid()
+        calluser3 = os.getresuid()
+        w = self.GetContext()
+        #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
+        if(fileuser.st_uid == w["uid"]):
+            print("mode->",fileuser.st_mode) #16877
+            print("uid-->",w["uid"])
+            
+    
+            return os.lstat("." + path)
+        else:
+            print(w["uid"])
+            print("mode->",fileuser.st_mode) #33188
+            
+            print("DIFERENTE")
+            return os.lstat("." + path)
+        
+        
+            
+       
 
     def readlink(self, path):
         return os.readlink("." + path)
@@ -177,24 +202,23 @@ class Xmp(Fuse):
             self.file = os.fdopen(os.open("." + path, flags, *mode),
                                   flag2mode(flags))
             self.fd = self.file.fileno()
-
-        def read(self, length, offset):
-            # os.system("passwrd.py")
-            a = passwrd.password()
-            if a == 1:
-                self.file.seek(offset)
-                return self.file.read(length)
-            else:
-                while a is not 1:
-                    a = passwrd.password()
-                self.file.seek(offset)
-                return self.file.read(length)
+            self.st_uid = os.getuid()
+            #self.set_resuid = os.getresuid()
+        
+        def read(self, length, offset): 
+            
+            return self.file.read(length)
 
         def write(self, buf, offset):
+            #a = passwrd.password()
+            
             self.file.seek(offset)
+            print("buf->",buf)
+            print("off->",offset)
             self.file.write(buf)
             return len(buf)
-
+           
+            
         def release(self, flags):
             self.file.close()
 
