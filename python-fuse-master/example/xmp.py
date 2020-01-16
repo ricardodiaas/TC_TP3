@@ -18,18 +18,21 @@ import sys
 from errno import *
 from stat import *
 import fcntl
+
 # pull in some spaghetti to make this stuff work without fuse-py being installed
 try:
     import _find_fuse_parts
 except ImportError:
     pass
 import fuse
+import json
 from fuseparts._fuse import main, FuseGetContext
 from fuse import Fuse
 from tkinter import *
 import passwrd
 import easygui
 import getpass
+import requests
 global n
 if not hasattr(fuse, '__version__'):
     raise RuntimeError("your fuse-py doesn't know of fuse.__version__, probably it's too old.")
@@ -74,23 +77,39 @@ class Xmp(Fuse):
 
     def getattr(self, path):
         fileuser = os.lstat("." + path)
-        calluser = os.getuid()
-        calluser2 = os.geteuid()
-        calluser3 = os.getresuid()
         w = self.GetContext()
+        calleruser =  w["uid"]
+        print("UID",os.stat("."+path).st_uid)
+        print("uid",fileuser.st_uid)
+        print(calleruser)
         #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
-        if(fileuser.st_uid == w["uid"]):
-            print("mode->",fileuser.st_mode) #16877
-            print("uid-->",w["uid"])
-            
-    
+        if fileuser.st_uid == w["uid"]:
+           
+            p = str(oct(fileuser.st_mode))[-3:]
+            #print("mode->",p) #16877
+            #print("uid-->",w["uid"])
             return os.lstat("." + path)
         else:
-            print(w["uid"])
-            print("mode->",fileuser.st_mode) #33188
-            
-            print("DIFERENTE")
-            return os.lstat("." + path)
+           # print(w["uid"])
+           # print(fileuser.st_uid)
+            mode = str(oct(fileuser.st_mode))[-3:]
+            r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
+            #print(r.json())
+        
+            data =json.dump(requests.get(r).json())
+            print(data)
+            if(len(data)==0):
+                return os.lstat("." + path)
+            else:
+                newmode = data["Mode"] 
+                print(newmode)
+                if mode != newmode:
+                    os.chmod(path,'0'+newmode)
+                
+                #print("mode->", oct(fileuser.st_mode)) #33188
+
+                #print("DIFERENTE")
+                return os.lstat("." + path)
         
         
             
