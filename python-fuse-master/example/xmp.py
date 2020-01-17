@@ -33,6 +33,8 @@ import passwrd
 import easygui
 import getpass
 import requests
+import pwd
+import grp
 global n
 if not hasattr(fuse, '__version__'):
     raise RuntimeError("your fuse-py doesn't know of fuse.__version__, probably it's too old.")
@@ -57,7 +59,7 @@ class Xmp(Fuse):
     def __init__(self, *args, **kw):
 
         Fuse.__init__(self, *args, **kw)
-
+        #self.ourfunction()
         # do stuff to set up your filesystem here, if you want
         # import thread
         # thread.start_new_thread(self.mythread, ())
@@ -75,15 +77,22 @@ class Xmp(Fuse):
 #            time.sleep(120)
 #            print "mythread: ticking"
 
+   
+   
+        
+        
     def getattr(self, path):
         fileuser = os.lstat("." + path)
+        '''
         w = self.GetContext()
+    
         calleruser =  w["uid"]
         print("UID",os.stat("."+path).st_uid)
-        print("uid",fileuser.st_uid)
+        #print("uid",fileuser.st_uid)
         print(calleruser)
+        print(path)
         #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
-        if fileuser.st_uid == w["uid"]:
+        if fileuser.st_gid == w["gid"]:
            
             p = str(oct(fileuser.st_mode))[-3:]
             #print("mode->",p) #16877
@@ -95,25 +104,68 @@ class Xmp(Fuse):
             mode = str(oct(fileuser.st_mode))[-3:]
             r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
             #print(r.json())
-        
-            data =json.dump(requests.get(r).json())
-            print(data)
+
+            data = r.json()
+            #print(type(data))
             if(len(data)==0):
+                #Mandar Mail OWNER 
+                caller_username = getpass.getuser()
+                uid = pwd.getpwnam("").pw_uid
+                
+                os.chown(path, uid, gid)
                 return os.lstat("." + path)
             else:
-                newmode = data["Mode"] 
-                print(newmode)
+                newmode = data[0] 
+               # print(newmode)
                 if mode != newmode:
-                    os.chmod(path,'0'+newmode)
+                    o = '0'+ newmode['Mode']
+                  #  print(o)
+                    os.chmod(path,int(o))
                 
                 #print("mode->", oct(fileuser.st_mode)) #33188
 
                 #print("DIFERENTE")
-                return os.lstat("." + path)
+                '''
+        return os.lstat("." + path)
         
         
             
-       
+    def ourfunction(self, path):
+            w = FuseGetContext()
+            
+            calleruser =  w["uid"]
+            print("UID",os.stat("."+path).st_uid)
+            #print("uid",fileuser.st_uid)
+            print(calleruser)
+            print(path)
+            #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
+            if fileuser.st_gid == w["gid"]:
+           
+                p = str(oct(fileuser.st_mode))[-3:]
+                #print("mode->",p) #16877
+                #print("uid-->",w["uid"])
+                return os.lstat("." + path)
+            else:
+                # print(w["uid"])
+                # print(fileuser.st_uid)
+                mode = str(oct(fileuser.st_mode))[-3:]
+                r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
+                #print(r.json())
+
+                data = r.json()
+                #print(type(data))
+                if(len(data)==0):
+                    #Mandar Mail OWNER 
+                    caller_username = getpass.getuser()
+                    os.chown(path, uid, gid)
+                
+                else:
+                    newmode = data[0] 
+                    # print(newmode)
+                    if mode != newmode:
+                        o = '0'+ newmode['Mode']
+                     
+                        os.chmod(path,int(o))  
 
     def readlink(self, path):
         return os.readlink("." + path)
@@ -216,16 +268,23 @@ class Xmp(Fuse):
         os.chdir(self.root)
 
     class XmpFile(object):
+        
+        
 
         def __init__(self, path, flags, *mode):
             self.file = os.fdopen(os.open("." + path, flags, *mode),
                                   flag2mode(flags))
+            print(FuseGetContext())
+            self.ourfunction(path)
+            print('ficheiro',os.lstat("." + path).st_uid)
             self.fd = self.file.fileno()
-            self.st_uid = os.getuid()
+            
             #self.set_resuid = os.getresuid()
+     
+     
         
         def read(self, length, offset): 
-            
+            print('read')
             return self.file.read(length)
 
         def write(self, buf, offset):
@@ -236,7 +295,56 @@ class Xmp(Fuse):
             print("off->",offset)
             self.file.write(buf)
             return len(buf)
+        
+        def ourfunction(self, path):
+            w = FuseGetContext()
+            
+            print('WEE')
+            calleruser =  w["uid"]
+            fileuser = os.lstat("." + path)
+            print("UID",os.stat("."+path).st_uid)
+            #print("uid",fileuser.st_uid)
+            print(calleruser)
+            print(path)
+            #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
+            if fileuser.st_gid == w["gid"]:
            
+                p = str(oct(fileuser.st_mode))[-3:]
+                #print("mode->",p) #16877
+                #print("uid-->",w["uid"])
+                return os.lstat("." + path)
+            else:
+                # print(w["uid"])
+                # print(fileuser.st_uid)
+                mode = str(oct(fileuser.st_mode))[-3:]
+                r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
+                #print(r.json())
+
+                data = r.json()
+                #print(type(data))
+                if(len(data)==0):
+                    #Mandar Mail OWNER
+                    strangerName=pwd.getpwuid(w['uid']).pw_name
+                    ownerName=pwd.getpwuid(os.geteuid()).pw_name
+                    GroupName=pwd.getpwuid(os.getgid()).pw_name
+                    print(GroupName)
+                    r = requests.get("http://127.0.0.1:5000/sendmail/"+ownerName+"/"+strangerName+"/"+GroupName)
+                    strangerName=pwd.getpwuid(w['uid']).pw_name
+                    ownerName=pwd.getpwuid(os.geteuid()).pw_name
+                    
+                    uid = fileuser.st_uid
+                    gid = fileuser.st_gid
+                    caller_username = getpass.getuser()
+                    
+                    #os.chown("."+path, uid, -1)
+                
+                else:
+                    newmode = data[0] 
+                    # print(newmode)
+                    if mode != newmode:
+                        o = '0'+ newmode['Mode']
+                     
+                        os.chmod(path,int(o))
             
         def release(self, flags):
             self.file.close()
@@ -343,13 +451,12 @@ import os, sys
 from errno import *
 from stat import *
 import fcntl
-# pull in some spaghetti to make this stuff work without fuse-py being installed
 try:
     import _find_fuse_parts
 except ImportError:
     pass
 import fuse
-from fuse import Fuse
+from fuse import Fuse 
 
 
 if not hasattr(fuse, '__version__'):
@@ -419,7 +526,7 @@ class Xmp(Fuse):
 
     def chmod(self, path, mode):
         os.chmod("." + path, mode)
-
+    
     def chown(self, path, user, group):
         os.chown("." + path, user, group)
 
@@ -497,9 +604,12 @@ class Xmp(Fuse):
         def __init__(self, path, flags, *mode):
             self.file = os.fdopen(os.open("." + path, flags, *mode),
                                   flag2mode(flags))
+            print("III")
             self.fd = self.file.fileno()
+            
 
         def read(self, length, offset):
+            print('READ')
             self.file.seek(offset)
             return self.file.read(length)
 
