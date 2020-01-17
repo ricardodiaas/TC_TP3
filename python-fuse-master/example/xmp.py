@@ -18,6 +18,7 @@ import sys
 from errno import *
 from stat import *
 import fcntl
+import string
 
 # pull in some spaghetti to make this stuff work without fuse-py being installed
 try:
@@ -255,6 +256,7 @@ class Xmp(Fuse):
             
         def getuserdata(self, path):
             w = FuseGetContext() 
+            print('path-->', path)
             calleruser = w["uid"]
             fileuser = os.lstat("." + path)
             mode = str(oct(fileuser.st_mode))[-1:]
@@ -277,9 +279,22 @@ class Xmp(Fuse):
             listaa.append(op)
 
         
-        def usermode(self, owner, ownergroup, stranger, strangergroup, operation, modeacess):
-                     
+        def usermode(self, path, owner, ownergroup, stranger, strangergroup, operation, modeacess):
+            
             #operation(operation)
+            if operation == 'write':           
+                
+                if(modeacess != operation):
+                    
+                    print('usermod -->',self.path)
+                    path = self.path
+                    newstr = path.replace(".", "")
+                    newpath = newstr.replace("swp","")
+                    print('newpath -->', newpath)
+                    datalist = self.getuserdata(newpath) 
+                    
+                    print('Owner of write---->',datalist['Owner'])
+                    
             if operation == 'read':
              #   listaa = [owner, ownergroup, stranger, strangergroup, operation, modeacess]
                  
@@ -294,14 +309,14 @@ class Xmp(Fuse):
         def read(self, length, offset): 
             print('read')
             lista = self.getuserdata(self.path)
-            self.usermode(lista['Owner'],lista['OwnerGroup'],lista['Stranger'],lista['StrangerGroup'],'read',lista['Mode'])
+            self.usermode(self.path,lista['Owner'],lista['OwnerGroup'],lista['Stranger'],lista['StrangerGroup'],'read',lista['Mode'])
             return self.file.read(length)
 
         def write(self, buf, offset):
             #a = passwrd.password()
             print('write')
             lista = self.getuserdata(self.path)
-            self.usermode(lista['Owner'],lista['OwnerGroup'],lista['Stranger'],lista['StrangerGroup'],'write',lista['Mode'])
+            self.usermode(self.path,lista['Owner'],lista['OwnerGroup'],lista['Stranger'],lista['StrangerGroup'],'write',lista['Mode'])
             self.file.seek(offset)
             #print("buf->",buf)
             #print("off->",offset)
