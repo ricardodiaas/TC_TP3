@@ -43,6 +43,7 @@ fuse.fuse_python_api = (0, 2)
 
 fuse.feature_assert('stateful_files', 'has_init')
 
+global listaa
 
 def flag2mode(flags):
     md = {os.O_RDONLY: 'rb', os.O_WRONLY: 'wb', os.O_RDWR: 'wb+'}
@@ -231,38 +232,95 @@ class Xmp(Fuse):
         def __init__(self, path, flags, *mode):
             self.file = os.fdopen(os.open("." + path, flags, *mode),
                                   flag2mode(flags))
-            
-            self.ourfunction(path)
-            
+            print('Init')
+            #self.ourfunction(path)
+            self.path = path
+            self.counter = 0
+            self.uid = os.lstat("." + path).st_uid
+            REALOWNER = self.uid
+            ownerName2 = pwd.getpwuid(REALOWNER).pw_name
+            print(ownerName2)
+           
             self.fd = self.file.fileno()
             
             #self.set_resuid = os.getresuid()
-     
+        def typesofaccess(self, mode):
+                if mode == '4':
+                    return 'read'
+                elif mode == '6':
+                    return 'write'
+                elif mode == '7':
+                    return 'execute'
+            
+            
+        def getuserdata(self, path):
+            w = FuseGetContext() 
+            calleruser = w["uid"]
+            fileuser = os.lstat("." + path)
+            mode = str(oct(fileuser.st_mode))[-1:]
+            realmode = self.typesofaccess(mode)
+            REALOWNER = self.uid
+            ownerName2 = pwd.getpwuid(REALOWNER).pw_name
+            strangerName = pwd.getpwuid(calleruser).pw_name                  
+            ownerName=pwd.getpwuid(os.geteuid()).pw_name
+            GroupNameOwner=pwd.getpwuid(fileuser.st_gid).pw_name
+            GroupNameStranger=pwd.getpwuid(calleruser).pw_name
+            print('Group of owner ->', GroupNameOwner)
+           # print('Owner of file ->', ownerName)
+            print('Owner of file 2.0 ->', ownerName2)
+            print('Stranger accessing ->', strangerName)
+            print('Group of stranger ->', GroupNameStranger)
+            lista = {"Owner":ownerName2,"Stranger":strangerName,"OwnerGroup":GroupNameOwner,"StrangerGroup":GroupNameStranger,"Stranger":strangerName,"Mode":realmode}
+            return lista
+        
+        def operations(op):
+            listaa.append(op)
+
+        
+        def usermode(self, owner, ownergroup, stranger, strangergroup, operation, modeacess):
+                     
+            #operation(operation)
+            if operation == 'read':
+             #   listaa = [owner, ownergroup, stranger, strangergroup, operation, modeacess]
+                 
+                if(modeacess != operation):                            
+                    try:
+                        r = requests.get("http://127.0.0.1:5000/sendmail/"+owner+"/"+stranger+"/"+ownergroup+'/'+strangergroup+'/'+operation+'/'+modeacess,timeout=5.0)
+                    except:
+                        print('Error') 
+         
      
         
         def read(self, length, offset): 
             print('read')
+            lista = self.getuserdata(self.path)
+            self.usermode(lista['Owner'],lista['OwnerGroup'],lista['Stranger'],lista['StrangerGroup'],'read',lista['Mode'])
             return self.file.read(length)
 
         def write(self, buf, offset):
             #a = passwrd.password()
-            
+            print('write')
+            lista = self.getuserdata(self.path)
+            self.usermode(lista['Owner'],lista['OwnerGroup'],lista['Stranger'],lista['StrangerGroup'],'write',lista['Mode'])
             self.file.seek(offset)
-            print("buf->",buf)
-            print("off->",offset)
+            #print("buf->",buf)
+            #print("off->",offset)
             self.file.write(buf)
             return len(buf)
         
+         
+            
+            
         def ourfunction(self, path):
             w = FuseGetContext()
             
             
             calleruser =  w["uid"]
             fileuser = os.lstat("." + path)
-            print("owner of file UID: ",os.stat("."+path).st_uid)
+          #  print("owner of file UID: ",os.stat("."+path).st_uid)
             #print("uid",fileuser.st_uid)
-            print('User calling the process: ',calleruser)
-            print('path of file accessed: ', path)
+           # print('User calling the process: ',calleruser)
+            #print('path of file accessed: ', path)
             #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
             if fileuser.st_gid == w["gid"]:
            
@@ -296,16 +354,13 @@ class Xmp(Fuse):
                     ownerName=pwd.getpwuid(os.geteuid()).pw_name
                     GroupNameOwner=pwd.getpwuid(user.st_gid).pw_name
                     GroupNameStranger=pwd.getpwuid(w["gid"]).pw_name
-                    print('Group of owner ->', GroupNameOwner)
-                    print('Owner of file ->', ownerName)
-                    print('Owner of file 2.0 ->', ownerName2)
-                    print('Stranger accessing ->', strangerName)
-                    print('Group of stranger ->', GroupNameStranger)
-                    print(strangerName + ' can '+ realmode +' your file!')
-                    try:
-                        r = requests.get("http://127.0.0.1:5000/sendmail/"+ownerName2+"/"+strangerName+"/"+GroupNameOwner,timeout=5.0)
-                    except:
-                        print('Error')          
+                    #print('Group of owner ->', GroupNameOwner)
+                    #print('Owner of file ->', ownerName)
+                    #('Owner of file 2.0 ->', ownerName2)
+                    #print('Stranger accessing ->', strangerName)
+                    #print('Group of stranger ->', GroupNameStranger)
+                   # print(strangerName + ' can '+ realmode +' your file!')
+                  
 
             
         def release(self, flags):

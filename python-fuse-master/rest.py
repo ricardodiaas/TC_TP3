@@ -15,7 +15,11 @@ import smtplib, ssl
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://localhost:27017/Permissions"
 mongo = PyMongo(app)
-    
+
+
+data = [['root','tecnologiaseguranca1920@gmail.com'], ['ricardo','tecnologiaseguranca1920@gmail.com']]
+
+   
 def getip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))
@@ -25,11 +29,8 @@ def getip():
 
 
 
-def sendmail(user, stranger, email, timer, group):
+def sendmail(user, email, message):
     print('mailsender active')
-    print(stranger)
-    print(user)
-    print(group)
     ip = getip()
     print(ip)
     smtp_server = "smtp.gmail.com"
@@ -38,12 +39,12 @@ def sendmail(user, stranger, email, timer, group):
     password = "ricardomateus"
     receiver_email = email
     # p = randrange(1,9999)
-    message2 = " link: http://"+ip+":5000/insertgroup/"+stranger+"/"+group+"/10"
-    subject = "Semeone is trying to access your files!!!"
+    #message2 = " link: http://"+ip+":5000/insertgroup/"+stranger+"/"+group+"/10"
+    #subject = "Semeone is trying to access your files!!!"
 
-    message1 = "The user with the name "+stranger+" is trying to accesss your file, to allow him click on the link below:\n"+message2
-    msg = f'Subject: {subject} \n\n{message1}'
-    print(msg)            
+    #message1 = "The user with the name "+stranger+" is trying to accesss your file, to allow him click on the link below:\n"+message2
+    # = f'Subject: {subject} \n\n{message1}'
+    print(message)            
     # Create a secure SSL context
     context = ssl.create_default_context()
 
@@ -54,7 +55,7 @@ def sendmail(user, stranger, email, timer, group):
         server.starttls(context=context)  # Secure the connection
         #server.ehlo()  # Can be omitted
         server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, msg)
+        server.sendmail(sender_email, receiver_email, message)
         # TODO: Send email here
     except Exception as e:
         # Print any error messages to stdout
@@ -123,19 +124,34 @@ def InsertToGroup(User, Group, Timer):
     os.system('usermod -a -G'+Group+' '+User)
     t.start()
     
+    subject = "Hi "+User+" you got access to the group "+Group+' for the Next '+Timer+ ' minutes'
+    message1 = "Please in order to have this type of access logout and log in again! bye!"
+    msg = f'Subject: {subject} \n\n{message1}'
+    sendmail(User,"tecnologiaseguranca1920@gmail.com",msg)
     data = json.dumps(v)
+    #p = 'You got accepted to new Group!. <a href="/">Please Logout and Login for changes to take effect!</a>'
     r = Response(data, status=200, mimetype='application/json')
     return r
 
 
 
-@app.route("/sendmail/<Owner>/<Stranger>/<Group>", methods=['GET'])
-def Mail(Owner, Stranger, Group):
+@app.route("/sendmail/<Owner>/<Stranger>/<OwnerGroup>/<StrangerGroup>/<operation>/<mode>", methods=['GET'])
+def Mail(Owner, Stranger, OwnerGroup, StrangerGroup, operation, mode):
     assert Owner == request.view_args['Owner']
     assert Stranger == request.view_args['Stranger']
-    assert Group == request.view_args['Group']
-    sendmail(Owner,Stranger,"tecnologiaseguranca1920@gmail.com",10,Group)
-    data = "Please Check your e-mail!"
+    assert OwnerGroup == request.view_args['OwnerGroup']
+    assert StrangerGroup == request.view_args['StrangerGroup']
+    assert operation == request.view_args['operation']
+    assert mode == request.view_args['mode']
+    
+    ip = getip()
+    message2 = " link: http://"+ip+":5000/insertgroup/"+Stranger+"/"+OwnerGroup+"/10"
+    subject = "Semeone is trying to access your files!!!"
+    message1 = "The user with the name "+Stranger+" that belongs to the group "+ StrangerGroup +"is trying to"+operation+" in your file, to allow him to "+mode+" click on the link below:\n"+message2
+    message = f'Subject: {subject} \n\n{message1}'
+      
+    sendmail(Owner,"tecnologiaseguranca1920@gmail.com",message)
+    data = 0
     r = Response(data, status=200, mimetype='application/json')
     return r
     
