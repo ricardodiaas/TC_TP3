@@ -29,9 +29,6 @@ import fuse
 import json
 from fuseparts._fuse import main, FuseGetContext
 from fuse import Fuse
-from tkinter import *
-import passwrd
-import easygui
 import getpass
 import requests
 import pwd
