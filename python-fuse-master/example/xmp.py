@@ -76,9 +76,6 @@ class Xmp(Fuse):
 #            time.sleep(120)
 #            print "mythread: ticking"
 
-   
-   
-        
         
     def getattr(self, path):
         fileuser = os.lstat("." + path)
@@ -226,7 +223,6 @@ class Xmp(Fuse):
     class XmpFile(object):
         
         
-
         def __init__(self, path, flags, *mode):
             self.file = os.fdopen(os.open("." + path, flags, *mode),
                                   flag2mode(flags))
@@ -301,8 +297,7 @@ class Xmp(Fuse):
                     except:
                         print('Error') 
          
-     
-        
+             
         def read(self, length, offset): 
             print('read')
             lista = self.getuserdata(self.path)
@@ -319,9 +314,7 @@ class Xmp(Fuse):
             #print("off->",offset)
             self.file.write(buf)
             return len(buf)
-        
-         
-            
+                   
             
         def ourfunction(self, path):
             w = FuseGetContext()
@@ -371,10 +364,9 @@ class Xmp(Fuse):
                     #('Owner of file 2.0 ->', ownerName2)
                     #print('Stranger accessing ->', strangerName)
                     #print('Group of stranger ->', GroupNameStranger)
-                   # print(strangerName + ' can '+ realmode +' your file!')
-                  
-
-            
+                    # print(strangerName + ' can '+ realmode +' your file!')
+                
+           
         def release(self, flags):
             self.file.close()
 
