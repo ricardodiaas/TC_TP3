@@ -11,7 +11,6 @@ import json
 import smtplib, ssl
 
 
-
 app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://localhost:27017/Permissions"
 mongo = PyMongo(app)
@@ -25,8 +24,6 @@ def getip():
     s.connect(("8.8.8.8", 80))
     print(s.getsockname()[0])
     return s.getsockname()[0]
-
-
 
 
 def sendmail(user, email, message):
@@ -134,7 +131,6 @@ def InsertToGroup(User, Group, Timer):
     return r
 
 
-
 @app.route("/sendmail/<Owner>/<Stranger>/<OwnerGroup>/<StrangerGroup>/<operation>/<mode>", methods=['GET'])
 def Mail(Owner, Stranger, OwnerGroup, StrangerGroup, operation, mode):
     assert Owner == request.view_args['Owner']
@@ -154,15 +150,7 @@ def Mail(Owner, Stranger, OwnerGroup, StrangerGroup, operation, mode):
     data = 0
     r = Response(data, status=200, mimetype='application/json')
     return r
-    
-    
-    
-
-
-
-
-
-
+ 
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port=5000,debug=True)
