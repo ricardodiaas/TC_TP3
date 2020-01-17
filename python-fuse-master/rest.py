@@ -5,7 +5,7 @@ from flask_restful import Api, Resource
 from flask_pymongo import PyMongo
 from bson.json_util import dumps
 import os
-import sys
+import socket
 import threading
 import json
 import smtplib, ssl
@@ -16,6 +16,13 @@ app = Flask(__name__)
 app.config["MONGO_URI"] = "mongodb://localhost:27017/Permissions"
 mongo = PyMongo(app)
     
+def getip():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    print(s.getsockname()[0])
+    return s.getsockname()[0]
+
+
 
 
 def sendmail(user, stranger, email, timer, group):
@@ -23,28 +30,31 @@ def sendmail(user, stranger, email, timer, group):
     print(stranger)
     print(user)
     print(group)
+    ip = getip()
+    print(ip)
     smtp_server = "smtp.gmail.com"
     port = 587  # For starttls
     sender_email = "tecnologiaseguranca1920@gmail.com"
     password = "ricardomateus"
     receiver_email = email
     # p = randrange(1,9999)
-    message = " link: http://127.0.0.1:5000/insertgroup/"+stranger+"/"+group+"/10"
-    message = """ Subject: SMTP e-mail test 
-    This is a test e-mail message. """+message
+    message2 = " link: http://"+ip+":5000/insertgroup/"+stranger+"/"+group+"/10"
+    subject = "Semeone is trying to access your files!!!"
 
-    print(message)            
+    message1 = "The user with the name "+stranger+" is trying to accesss your file, to allow him click on the link below:\n"+message2
+    msg = f'Subject: {subject} \n\n{message1}'
+    print(msg)            
     # Create a secure SSL context
     context = ssl.create_default_context()
 
     # Try to log in to server and send email
     try:
         server = smtplib.SMTP(smtp_server, port)
-        server.ehlo()  # Can be omitted
+        #server.ehlo()  # Can be omitted
         server.starttls(context=context)  # Secure the connection
-        server.ehlo()  # Can be omitted
+        #server.ehlo()  # Can be omitted
         server.login(sender_email, password)
-        server.sendmail(sender_email, receiver_email, message)
+        server.sendmail(sender_email, receiver_email, msg)
         # TODO: Send email here
     except Exception as e:
         # Print any error messages to stdout
@@ -97,8 +107,8 @@ def change(Owner, Stranger, Mode, Timer):
     return 0
 
 def remove(name,group):
-    os.system('deluser'+group+' '+name)
-    mongo.db.Permissions.remove({'User': user, 'Group':group})
+    os.system('deluser '+name+' '+group)
+    mongo.db.Permissions.remove({'User':name, 'Group':group})
 
 @app.route("/insertgroup/<User>/<Group>/<Timer>", methods=['GET'])
 def InsertToGroup(User, Group, Timer):
@@ -106,9 +116,9 @@ def InsertToGroup(User, Group, Timer):
     assert Group == request.view_args['Group']
     assert Timer == request.view_args['Timer']
     mongo.db.Permissions.insert({'User': User, 'Group':Group, 'Timer': Timer })
-    new_user = mongo.db.Permissions.find({'User': User, 'Group':Group, 'Timer': Timer })
+    new_user = mongo.db.Permissions.find({'User': User, 'Group':Group, 'Timer': Timer}, {'_id':0})
     v = list(new_user)
-    t = Timer(30.0,remove(User,Group))
+    t = threading.Timer(600,remove,[User,Group])
     os.seteuid(0)
     os.system('usermod -a -G'+Group+' '+User)
     t.start()
@@ -139,4 +149,5 @@ def Mail(Owner, Stranger, Group):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0',port=5000,debug=True)
+    

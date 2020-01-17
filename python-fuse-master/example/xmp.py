@@ -83,53 +83,10 @@ class Xmp(Fuse):
         
     def getattr(self, path):
         fileuser = os.lstat("." + path)
-        '''
-        w = self.GetContext()
-    
-        calleruser =  w["uid"]
-        print("UID",os.stat("."+path).st_uid)
-        #print("uid",fileuser.st_uid)
-        print(calleruser)
-        print(path)
-        #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
-        if fileuser.st_gid == w["gid"]:
-           
-            p = str(oct(fileuser.st_mode))[-3:]
-            #print("mode->",p) #16877
-            #print("uid-->",w["uid"])
-            return os.lstat("." + path)
-        else:
-           # print(w["uid"])
-           # print(fileuser.st_uid)
-            mode = str(oct(fileuser.st_mode))[-3:]
-            r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
-            #print(r.json())
-
-            data = r.json()
-            #print(type(data))
-            if(len(data)==0):
-                #Mandar Mail OWNER 
-                caller_username = getpass.getuser()
-                uid = pwd.getpwnam("").pw_uid
-                
-                os.chown(path, uid, gid)
-                return os.lstat("." + path)
-            else:
-                newmode = data[0] 
-               # print(newmode)
-                if mode != newmode:
-                    o = '0'+ newmode['Mode']
-                  #  print(o)
-                    os.chmod(path,int(o))
-                
-                #print("mode->", oct(fileuser.st_mode)) #33188
-
-                #print("DIFERENTE")
-                '''
         return os.lstat("." + path)
         
         
-            
+    '''         
     def ourfunction(self, path):
             w = FuseGetContext()
             
@@ -166,7 +123,7 @@ class Xmp(Fuse):
                         o = '0'+ newmode['Mode']
                      
                         os.chmod(path,int(o))  
-
+    '''
     def readlink(self, path):
         return os.readlink("." + path)
 
@@ -274,9 +231,9 @@ class Xmp(Fuse):
         def __init__(self, path, flags, *mode):
             self.file = os.fdopen(os.open("." + path, flags, *mode),
                                   flag2mode(flags))
-            print(FuseGetContext())
+            
             self.ourfunction(path)
-            print('ficheiro',os.lstat("." + path).st_uid)
+            
             self.fd = self.file.fileno()
             
             #self.set_resuid = os.getresuid()
@@ -299,13 +256,13 @@ class Xmp(Fuse):
         def ourfunction(self, path):
             w = FuseGetContext()
             
-            print('WEE')
+            
             calleruser =  w["uid"]
             fileuser = os.lstat("." + path)
-            print("UID",os.stat("."+path).st_uid)
+            print("owner of file UID: ",os.stat("."+path).st_uid)
             #print("uid",fileuser.st_uid)
-            print(calleruser)
-            print(path)
+            print('User calling the process: ',calleruser)
+            print('path of file accessed: ', path)
             #easygui.msgbox("owner -->"+str(fileuser.st_uid),"user calling"+str(calluser)+ " usercalling2"+str(calluser2))     
             if fileuser.st_gid == w["gid"]:
            
@@ -316,35 +273,40 @@ class Xmp(Fuse):
             else:
                 # print(w["uid"])
                 # print(fileuser.st_uid)
-                mode = str(oct(fileuser.st_mode))[-3:]
-                r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
+                mode = str(oct(fileuser.st_mode))[-1:]
+                #r = requests.get("http://127.0.0.1:5000/permission/"+str(fileuser.st_uid)+"/"+str(calleruser))
                 #print(r.json())
-
-                data = r.json()
+                print('Mode of access for others:', mode)
+                realmode = ''
+                if mode == '4':
+                    realmode = 'Read'
+                elif mode == '6':
+                    realmode = 'Read and Write'
+                elif mode == '7':
+                    realmode = 'read write and execute'
+                    
+                data = 0
+                #data = r.json()
                 #print(type(data))
-                if(len(data)==0):
+                if(data==0):
                     #Mandar Mail OWNER
-                    strangerName=pwd.getpwuid(w['uid']).pw_name
+                    user = os.lstat("." + path)
+                    ownerName2 = pwd.getpwuid(user.st_uid).pw_name
+                    strangerName=pwd.getpwuid(calleruser).pw_name                  
                     ownerName=pwd.getpwuid(os.geteuid()).pw_name
-                    GroupName=pwd.getpwuid(os.getgid()).pw_name
-                    print(GroupName)
-                    r = requests.get("http://127.0.0.1:5000/sendmail/"+ownerName+"/"+strangerName+"/"+GroupName)
-                    strangerName=pwd.getpwuid(w['uid']).pw_name
-                    ownerName=pwd.getpwuid(os.geteuid()).pw_name
-                    
-                    uid = fileuser.st_uid
-                    gid = fileuser.st_gid
-                    caller_username = getpass.getuser()
-                    
-                    #os.chown("."+path, uid, -1)
-                
-                else:
-                    newmode = data[0] 
-                    # print(newmode)
-                    if mode != newmode:
-                        o = '0'+ newmode['Mode']
-                     
-                        os.chmod(path,int(o))
+                    GroupNameOwner=pwd.getpwuid(user.st_gid).pw_name
+                    GroupNameStranger=pwd.getpwuid(w["gid"]).pw_name
+                    print('Group of owner ->', GroupNameOwner)
+                    print('Owner of file ->', ownerName)
+                    print('Owner of file 2.0 ->', ownerName2)
+                    print('Stranger accessing ->', strangerName)
+                    print('Group of stranger ->', GroupNameStranger)
+                    print(strangerName + ' can '+ realmode +' your file!')
+                    try:
+                        r = requests.get("http://127.0.0.1:5000/sendmail/"+ownerName2+"/"+strangerName+"/"+GroupNameOwner,timeout=5.0)
+                    except:
+                        print('Error')          
+
             
         def release(self, flags):
             self.file.close()
